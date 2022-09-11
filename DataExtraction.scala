@@ -1,3 +1,5 @@
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.{monotonically_increasing_id, row_number}
 import org.apache.spark.sql.types.{StructType, StructField, StringType};
 import org.apache.spark.sql.{Row, DataFrame};
 import java.io._;
@@ -74,9 +76,17 @@ object DataExtraction {
     // Yaptigim shell denemesi:
     // val dfWords = df.select(split(col("band_names"),"[. ,-_;:/\\]").as("words")).drop("band_name")
 
+    // temp view
+    df.createGlobalTempView("bands")
+
+    // Index column for dfWords
+    dfWords = dfWords.withColumn("row_index", 
+      row_number().over(
+          Window.orderBy(monotonically_increasing_id())))
 
     // TODO t r v e olan kolonlari filtrele
-    var tempDf = df.filter(df("band_name").startsWith()).show(false)
+    //var tempDf = df.filter(df("band_name").startsWith()).show(false)
 
+    return keywords;
   }
 }
