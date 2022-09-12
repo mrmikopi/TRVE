@@ -62,34 +62,6 @@ object DataExtraction {
       return madPlus;
   }
 
-  // Won't use anymore
-  def getTrveNames(df : DataFrame) : DataFrame = {
-
-    val schema = StructType(
-    StructField("word", StringType, true) ::
-    StructField("start_letter", StringType, false) :: Nil)
-    
-    var keywords = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], schema)
-
-    // TODO Her kelimeyi ayri bir row olarak ekle
-    
-    // Yaptigim shell denemesi:
-    // val dfWords = df.select(split(col("band_names"),"[. ,-_;:/\\]").as("words")).drop("band_name")
-
-    // temp view
-    //df.createGlobalTempView("bands")
-
-    // Index column for dfWords
-    // dfWords = dfWords.withColumn("row_index", 
-    //   row_number().over(
-    //       Window.orderBy(monotonically_increasing_id())))
-
-    // TODO t r v e olan kolonlari filtrele
-    //var tempDf = df.filter(df("band_name").startsWith()).show(false)
-
-    return keywords;
-  }
-
   def getRandomTrve() : String = {
     
     // TODO Buraya dfT'leri olusturdugun scripti ekleyebilirsin belki:
