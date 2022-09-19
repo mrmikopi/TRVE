@@ -24,4 +24,13 @@ class SpotifyManager:
                         "popularity":item["popularity"]}
 
     def search_albums(self, artist_id):
-        print("TODO")
+        
+        result = self.sp.artist_albums(artist_id, album_type="album", limit=50)
+        albums = {}
+        for item in result["items"]:
+            albums[item["id"]] = {"name":item["name"],
+                                "release_date":item["release_date"],
+                                "precision":item["release_date_precision"],
+                                "track_count":item["total_tracks"]}
+
+        return albums
