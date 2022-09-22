@@ -2,7 +2,8 @@
 
 from spotipy.oauth2 import SpotifyClientCredentials
 from urllib.parse import quote
-from rapidfuzz import fuzz, process
+from rapidfuzz import process
+from rapidfuzz.fuzz import partial_token_set_ratio
 # from fuzzywuzzy import fuzz, process
 import spotipy, sys, pprint, json, Levenshtein
 
@@ -26,9 +27,9 @@ class SpotifyManager:
 
     def search_albums(self, artist_id):
         # Get albums of the artist
-        result = self.sp.artist_albums(artist_id, album_type="album", limit=50)
-        pprint.pprint(result)
-
+        result = self.sp.artist_albums(artist_id, country="US", album_type="album", limit=50)
+        # pprint.pprint(result)
+        albums = []
 
         # Group every album according to their name similarity
 
@@ -40,14 +41,15 @@ class SpotifyManager:
             albums.append({"id":item["id"],
                         "name":item["name"],
                         "release_date":item["release_date"],
-                        "precision":item["release_date_precision"],
                         "track_count":item["total_tracks"]})
+        # Match Live/Remaster/Deluxe Edition albums
+        # albums = match_albums(albums)
+
         return albums
     
-    def match_albums(albums)
+    # TODO Not finished. Might be used for eliminating "Deluxe edition" albums.
+    def match_albums(self, albums):
 
-        # Match Live/Remaster/Deluxe Edition albums
-        albums = []
         groups = []
         album_names = []
         for album in albums:
@@ -59,15 +61,25 @@ class SpotifyManager:
             for group in groups:
                 if album["name"] in group:
                     in_group = True
-                    continue
+                    break
             if not in_group:
                 temp_list = []
                 # FuzzMatch with every other album
-                fuzzed_albums = process.execute(album["name"], album_names,
-                    scorer=fuzz.partial_token_set_ratio, limit=None)
+                fuzzed_albums = process.extract(query=album["name"], choices=album_names,
+                    scorer=partial_token_set_ratio, limit=None)
+                matched_album_count = 0
                 # Compare fuzz results
                 for fuzz in fuzzed_albums:
-                    # Number can be changed
+                    # fuzz ratio can be changed
                     if (fuzz[1] > 90):
                         temp_list.append(fuzz[0])                
+                        matched_album_count += 1
                 groups.append(temp_list)
+                album["related_albums"] = {"related_album_names":temp_list,"count":len(temp_list)}
+            else:
+                # Add key: Related Albums
+                album["related_albums"] = {"related_album_names":temp_list}
+
+
+        return albums
+
