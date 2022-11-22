@@ -4,6 +4,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from urllib.parse import quote
 from rapidfuzz import process
 from rapidfuzz.fuzz import partial_token_set_ratio
+from spotipy.exceptions import SpotifyException
 # from fuzzywuzzy import fuzz, process
 import spotipy, sys, pprint, json, glob, datetime as dt, time, pandas as pd;
 
@@ -15,7 +16,7 @@ class SpotifyManager:
     
     def test_all_artists(self):
         self.gather_band_names()
-        artists = []
+        artists = {} # Bunu { id : {dict} } yapsana?
         non_matched = 0
         multiple_matched = 0
         counter = 1
@@ -23,7 +24,7 @@ class SpotifyManager:
             for line in source.readlines():
                 name = line.strip()
                 if counter % 250 == 0:
-                    if counter > 6000:
+                    if counter > 4000:
                         break
                     print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
                     # if len(artists) > 5:
@@ -31,24 +32,27 @@ class SpotifyManager:
                 matched = self.search_artist(name,limit=10)
                 cnt_mtch = len(matched)
                 if cnt_mtch == 1:
-                    artists.append(matched[0])
+                    artists.update(matched)
                 elif cnt_mtch == 0:
                     non_matched += 1
                 elif cnt_mtch > 1:
                     multiple_matched += (cnt_mtch - 1)
                     # print(f"Matched multiple on {name}")
-                    artists.extend(matched)
+                    artists.update(matched)
                 else:
                     pass
                 counter += 1
             
             print("\n FINAL RESULTS \n")
-            print(f"Dictionary contains {len(artists)} many artists.\nFirst element is:")
-            pprint.pprint(artists[0])
-            print("Last element is:")
-            pprint.pprint(artists[-1])
+            print(f"Dictionary contains {len(artists)} many artists.") # \nFirst element is:")
+            # pprint.pprint(artists[0])
+            # print("Last element is:")
+            # pprint.pprint(artists[-1])
             print(f"Non matched count is {non_matched},") 
             print(f"and multiple matches are {multiple_matched}")
+
+            df = pd.DataFrame(artists)
+            df.to_csv("First_6000_Artists.csv")
         
     def gather_band_names(self):
         path = '/home/kaan/Repos/metal_dataset/'
@@ -67,10 +71,10 @@ class SpotifyManager:
                     lines.update(temp_set)
 
             # Write set's lines to target file
+            # lines = sorted(lines)
             target_file.seek(0,0)
             for line in lines:
                 target_file.write(line)
-        
     def get_trve_artists(self):
         # read artist name file
         
@@ -86,6 +90,7 @@ class SpotifyManager:
         try:
             result = self.sp.search(artist_name, type="artist", limit=limit)
         except SpotifyException as se:
+            # TODO Else ekle
             if se.http_status == 429:
                 print("429 429 429 429 429 429 429 429 429 429")
                 try:
@@ -105,14 +110,14 @@ class SpotifyManager:
             print(e.args)
         # pprint.pprint(result)
         # TODO Sonuc bulamazsa case
-        matched = []
+        matched = {}
         for item in result["artists"]["items"]:
             if (item["name"].upper() == artist_name.upper()):
-                matched.append({"artist_name":item["name"],
-                            "artist_id":item["id"],
-                            "genres":item["genres"],
-                            "followers":item["followers"],
-                            "popularity":item["popularity"]})
+                matched[item["id"]] = {"artist_name":item["name"],
+                                    "id":item["id"],
+                                    "genres":item["genres"],
+                                    "followers":item["followers"],
+                                    "popularity":item["popularity"]}
         # print(f"Spotipy matched {len(matched)} many artists for {artist_name}")
         return matched
 
