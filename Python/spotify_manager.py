@@ -5,7 +5,7 @@ from urllib.parse import quote
 from rapidfuzz import process
 from rapidfuzz.fuzz import partial_token_set_ratio
 # from fuzzywuzzy import fuzz, process
-import spotipy, sys, pprint, json, Levenshtein
+import spotipy, sys, pprint, json, glob, datetime as dt, time, pandas as pd;
 
 class SpotifyManager: 
 
@@ -13,17 +13,108 @@ class SpotifyManager:
         self.sp = spotipy.Spotify(client_credentials_manager=
             SpotifyClientCredentials(client_id=client_id,client_secret=client_secret))
     
-    def search_artist(self, artist_name, genre="metal"):
-        search_str = f"{artist_name} genre:{genre}"
-        result = self.sp.search(search_str, type="artist", limit=15)
-        pprint.pprint(result)
+    def test_all_artists(self):
+        self.gather_band_names()
+        artists = []
+        non_matched = 0
+        multiple_matched = 0
+        counter = 1
+        with open ("all_band_names.txt", "r") as source:
+            for line in source.readlines():
+                name = line.strip()
+                if counter % 250 == 0:
+                    if counter > 6000:
+                        break
+                    print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
+                    # if len(artists) > 5:
+                    #     break
+                matched = self.search_artist(name,limit=10)
+                cnt_mtch = len(matched)
+                if cnt_mtch == 1:
+                    artists.append(matched[0])
+                elif cnt_mtch == 0:
+                    non_matched += 1
+                elif cnt_mtch > 1:
+                    multiple_matched += (cnt_mtch - 1)
+                    # print(f"Matched multiple on {name}")
+                    artists.extend(matched)
+                else:
+                    pass
+                counter += 1
+            
+            print("\n FINAL RESULTS \n")
+            print(f"Dictionary contains {len(artists)} many artists.\nFirst element is:")
+            pprint.pprint(artists[0])
+            print("Last element is:")
+            pprint.pprint(artists[-1])
+            print(f"Non matched count is {non_matched},") 
+            print(f"and multiple matches are {multiple_matched}")
+        
+    def gather_band_names(self):
+        path = '/home/kaan/Repos/metal_dataset/'
+        all_bands = []
+
+        # Gather all file names from all genres
+        for name in glob.glob(path + '*_bands.txt'):
+            all_bands.append(name)
+
+        with open("all_band_names.txt", "w+") as target_file:
+            # Read all files and write lines to a set
+            lines = set()
+            for genre_file in all_bands:
+                with open(genre_file, "r") as source_file:
+                    temp_set = set(source_file.readlines())
+                    lines.update(temp_set)
+
+            # Write set's lines to target file
+            target_file.seek(0,0)
+            for line in lines:
+                target_file.write(line)
+        
+    def get_trve_artists(self):
+        # read artist name file
+        
+            # iterate with search_artist
+            
+            # write results to another file 
+        return True
+
+    def search_artist(self, artist_name, genre="metal", limit=50):
+        # Genre'yi query'e eklemek istersen lazim olacak alttaki
+        # search_str = f"{artist_name}"
+        result = []
+        try:
+            result = self.sp.search(artist_name, type="artist", limit=limit)
+        except SpotifyException as se:
+            if se.http_status == 429:
+                print("429 429 429 429 429 429 429 429 429 429")
+                try:
+                    retry_time = int(se.headers['retry-after'])
+                    print(f"Will sleep for {retry_time} seconds")
+                    time.sleep(retry_time + 1)
+                    result = self.sp.search(artist_name, type="artist", limit=limit)
+                except ValueError:
+                    print("Json parse edemedim :'(")
+                except SpotifyException as se2:
+                    print("Yet another Spotify Exception with parameters:")
+                    print(f"Http Status: {se2.http_status}\nCode: {se2.code}\nMsg: {se2.msg}\nReason: {se2.reason}\nHeaders:")
+                    pprint.pprint(se2.headers)
+                except Exception as e:
+                    print(e)
+        except Exception as e:
+            print(e.args)
+        # pprint.pprint(result)
         # TODO Sonuc bulamazsa case
+        matched = []
         for item in result["artists"]["items"]:
             if (item["name"].upper() == artist_name.upper()):
-                return {"artist_id":item["id"],
-                        "genres":item["genres"],
-                        "followers":item["followers"],
-                        "popularity":item["popularity"]}
+                matched.append({"artist_name":item["name"],
+                            "artist_id":item["id"],
+                            "genres":item["genres"],
+                            "followers":item["followers"],
+                            "popularity":item["popularity"]})
+        # print(f"Spotipy matched {len(matched)} many artists for {artist_name}")
+        return matched
 
     def search_albums(self, artist_id):
         # Get albums of the artist
