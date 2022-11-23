@@ -6,10 +6,14 @@ from rapidfuzz import process
 from rapidfuzz.fuzz import partial_token_set_ratio
 from spotipy.exceptions import SpotifyException
 # from fuzzywuzzy import fuzz, process
-import spotipy, sys, pprint, json, glob, datetime as dt, time, pandas as pd;
+import spotipy, sys, pprint, json, glob, datetime as dt, time, pandas as pd, re;
 
 class SpotifyManager: 
 
+    greenlist = set(["metal","rock","nwobhm","punk","core","nwothm","ponk","h8000","straight edge","ukhc","uk82","beatdown","nyhc","grunge","djent","death",
+                "death","skramz","melodeath","grind","thrash","hardcore","post-hardcore","screamo","screamocore","deathrash","sasscore","swancore",
+                "pornogrind","orgcore","mathcore","oi","slayer","emocore","thall","dreamo","doom","deathcore","shred","visual","shoegaze","goregrind",
+                "noisecore","heavy psych","black","beatdown","metalcore","sludgecore"])
     def __init__(self, client_id='f761219356424233973b191ecfa812a5', client_secret='ec22780b46c340988ebef5afc3fb8a40'):
         self.sp = spotipy.Spotify(client_credentials_manager=
             SpotifyClientCredentials(client_id=client_id,client_secret=client_secret))
@@ -17,28 +21,30 @@ class SpotifyManager:
     def test_all_artists(self):
         self.gather_band_names()
         artists = {} # Bunu { id : {dict} } yapsana?
+        no_results = 0
         non_matched = 0
         multiple_matched = 0
-        counter = 1
+        counter = 0
         with open ("all_band_names.txt", "r") as source:
             for line in source.readlines():
                 name = line.strip()
-                if counter % 250 == 0:
-                    if counter > 4000:
-                        break
-                    print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
-                    # if len(artists) > 5:
+                if counter % 1000 == 0:
+                    # if counter > 4000:
                     #     break
+                    print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
                 matched = self.search_artist(name,limit=10)
-                cnt_mtch = len(matched)
+                cnt_mtch = len(matched[0])
                 if cnt_mtch == 1:
-                    artists.update(matched)
+                    artists.update(matched[0])
                 elif cnt_mtch == 0:
-                    non_matched += 1
+                    if (matched[1]):
+                        non_matched += 1
+                    else:
+                        no_results += 1
                 elif cnt_mtch > 1:
                     multiple_matched += (cnt_mtch - 1)
                     # print(f"Matched multiple on {name}")
-                    artists.update(matched)
+                    artists.update(matched[0])
                 else:
                     pass
                 counter += 1
@@ -49,10 +55,12 @@ class SpotifyManager:
             # print("Last element is:")
             # pprint.pprint(artists[-1])
             print(f"Non matched count is {non_matched},") 
+            print(f"No results count is {no_results},") 
             print(f"and multiple matches are {multiple_matched}")
 
-            df = pd.DataFrame(artists)
-            df.to_csv("First_6000_Artists.csv")
+            time = dt.datetime.now()
+            df = pd.DataFrame.from_dict(artists, orient='index',)
+            df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
         
     def gather_band_names(self):
         path = '/home/kaan/Repos/metal_dataset/'
@@ -86,13 +94,13 @@ class SpotifyManager:
     def search_artist(self, artist_name, genre="metal", limit=50):
         # Genre'yi query'e eklemek istersen lazim olacak alttaki
         # search_str = f"{artist_name}"
-        result = []
+        result = {}
         try:
             result = self.sp.search(artist_name, type="artist", limit=limit)
         except SpotifyException as se:
             # TODO Else ekle
             if se.http_status == 429:
-                print("429 429 429 429 429 429 429 429 429 429")
+                print(f"{dt.datetime.now()} 429 429 429 429 429 429 429 429 429 429")
                 try:
                     retry_time = int(se.headers['retry-after'])
                     print(f"Will sleep for {retry_time} seconds")
@@ -105,21 +113,31 @@ class SpotifyManager:
                     print(f"Http Status: {se2.http_status}\nCode: {se2.code}\nMsg: {se2.msg}\nReason: {se2.reason}\nHeaders:")
                     pprint.pprint(se2.headers)
                 except Exception as e:
-                    print(e)
+                    print(e.args)
         except Exception as e:
-            print(e.args)
+            print(f"{dt.datetime.now()} - {e.args}")
         # pprint.pprint(result)
-        # TODO Sonuc bulamazsa case
         matched = {}
-        for item in result["artists"]["items"]:
-            if (item["name"].upper() == artist_name.upper()):
-                matched[item["id"]] = {"artist_name":item["name"],
-                                    "id":item["id"],
-                                    "genres":item["genres"],
-                                    "followers":item["followers"],
-                                    "popularity":item["popularity"]}
+        if result:
+            if len(result["artists"]["items"]):
+            # item = result["artists"]["items"][0]
+                for item in result["artists"]["items"]:
+                    if (item["name"].upper() == artist_name.upper()):
+                        # For real trve experience, only take ones within greenlist
+                        for genre in item['genres']:
+                            words = re.split('\\-|\\ ', genre)
+                            if self.greenlist.intersection(words):
+                                matched[item["id"]] = {"artist_name":item["name"],
+                                                        "id"        :item["id"],
+                                                        "genres"    :item["genres"],
+                                                        "followers" :item["followers"],
+                                                        "popularity":item["popularity"]}
+            else:
+                # Spotipy covldn't find any resvlts
+                return (matched,False)
         # print(f"Spotipy matched {len(matched)} many artists for {artist_name}")
-        return matched
+        # Had some resvlts and went throvgh a genre search
+        return (matched,True)
 
     def search_albums(self, artist_id):
         # Get albums of the artist
