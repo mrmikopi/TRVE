@@ -13,14 +13,16 @@ class SpotifyManager:
     greenlist = set(["metal","rock","nwobhm","punk","core","nwothm","ponk","h8000","straight edge","ukhc","uk82","beatdown","nyhc","grunge","djent","death",
                 "death","skramz","melodeath","grind","thrash","hardcore","post-hardcore","screamo","screamocore","deathrash","sasscore","swancore",
                 "pornogrind","orgcore","mathcore","oi","slayer","emocore","thall","dreamo","doom","deathcore","shred","visual","shoegaze","goregrind",
-                "noisecore","heavy psych","black","beatdown","metalcore","sludgecore"])
+                "noisecore","heavy psych","black","beatdown","metalcore","sludgecore","powerviolence","latincore","nintendocore","ramonescore",
+                "trancecore","gymcore","easycore","queercore","swancore","electronicore","jazzcore","doomcore","crust","italogaze",])
+
     def __init__(self, client_id='f761219356424233973b191ecfa812a5', client_secret='ec22780b46c340988ebef5afc3fb8a40'):
         self.sp = spotipy.Spotify(client_credentials_manager=
             SpotifyClientCredentials(client_id=client_id,client_secret=client_secret))
     
     def test_all_artists(self):
         self.gather_band_names()
-        artists = {} # Bunu { id : {dict} } yapsana?
+        artists = {}
         no_results = 0
         non_matched = 0
         multiple_matched = 0
