@@ -20,20 +20,31 @@ class SpotifyManager:
         self.sp = spotipy.Spotify(client_credentials_manager=
             SpotifyClientCredentials(client_id=client_id,client_secret=client_secret))
     
-    def test_all_artists(self):
-        self.gather_band_names()
+    def test_all_artists(self, stop=0):
+        
+        FILE_COUNTER_STRING = 'bands_counter.txt'
+        RESULT_FILE_STRING = 'all_artists.csv'
+
+        start_index = 0
+        if glob.glob(FILE_COUNTER_STRING):
+            with open(FILE_COUNTER_STRING,'r') as file:
+                start_index = file.read().strip()
+                print(f"REMOVE THIS!!! Gather band names start index: {start_index}")
+        self.gather_band_names(start_index)
+
+        if not glob.glob(RESULT_FILE_STRING):
+            with open (RESULT_FILE_STRING, 'w') as target:
+                target.write(',artist_name,artist_id,genres,followers,popularity\n')
+
         artists = {}
         no_results = 0
         non_matched = 0
         multiple_matched = 0
         counter = 0
-        with open ("all_band_names.txt", "r") as source:
+
+        with open ("all_band_names.txt", "r+") as source:
             for line in source.readlines():
                 name = line.strip()
-                if counter % 1000 == 0:
-                    # if counter > 4000:
-                    #     break
-                    print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
                 matched = self.search_artist(name,limit=10)
                 cnt_mtch = len(matched[0])
                 if cnt_mtch == 1:
@@ -45,14 +56,23 @@ class SpotifyManager:
                         no_results += 1
                 elif cnt_mtch > 1:
                     multiple_matched += (cnt_mtch - 1)
-                    # print(f"Matched multiple on {name}")
                     artists.update(matched[0])
                 else:
                     pass
+
                 counter += 1
+                if counter % 1250 == 0:
+                    df = pd.DataFrame.from_dict(artists, orient='index')
+                    df.to_csv(RESULT_FILE_STRING,mode='a',index=True,header=False)
+                    with open(FILE_COUNTER_STRING,'w') as file:
+                        file.write(counter)
+                    artists = {}
+                    if counter==stop:
+                        break
+                    print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
             
             print("\n FINAL RESULTS \n")
-            print(f"Dictionary contains {len(artists)} many artists.") # \nFirst element is:")
+            # print(f"Dictionary contains {len(artists)} many artists.") # \nFirst element is:")
             # pprint.pprint(artists[0])
             # print("Last element is:")
             # pprint.pprint(artists[-1])
@@ -61,18 +81,23 @@ class SpotifyManager:
             print(f"and multiple matches are {multiple_matched}")
 
             time = dt.datetime.now()
-            df = pd.DataFrame.from_dict(artists, orient='index',)
-            df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
+            if artists:
+                print(f"Writing {len(artists)} artists that is left.")
+                df = pd.DataFrame.from_dict(artists, orient='index')
+            # df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
+            df.to_csv(RESULT_FILE_STRING,mode='a',index=True,header=False)
+            print("Remaining write operation should be succesfull")
         
-    def gather_band_names(self):
+    def gather_band_names(self,start=0):
         path = '/home/kaan/Repos/metal_dataset/'
+        FILE_NAME = 'all_band_names.txt'
         all_bands = []
 
         # Gather all file names from all genres
         for name in glob.glob(path + '*_bands.txt'):
             all_bands.append(name)
 
-        with open("all_band_names.txt", "w+") as target_file:
+        with open(FILE_NAME, "w+") as target_file:
             # Read all files and write lines to a set
             lines = set()
             for genre_file in all_bands:
@@ -83,8 +108,10 @@ class SpotifyManager:
             # Write set's lines to target file
             # lines = sorted(lines)
             target_file.seek(0,0)
-            for line in lines:
+            for line in lines[start_index:]:
                 target_file.write(line)
+        return FILE_NAME
+
     def get_trve_artists(self):
         # read artist name file
         
@@ -130,7 +157,7 @@ class SpotifyManager:
                             words = re.split('\\-|\\ ', genre)
                             if self.greenlist.intersection(words):
                                 matched[item["id"]] = {"artist_name":item["name"],
-                                                        "id"        :item["id"],
+                                                        "artist_id" :item["id"],
                                                         "genres"    :item["genres"],
                                                         "followers" :item["followers"],
                                                         "popularity":item["popularity"]}
