@@ -28,9 +28,11 @@ class SpotifyManager:
         start_index = 0
         if glob.glob(FILE_COUNTER_STRING):
             with open(FILE_COUNTER_STRING,'r') as file:
-                start_index = file.read().strip()
-                print(f"REMOVE THIS!!! Gather band names start index: {start_index}")
-        self.gather_band_names(start_index)
+                file_index = file.read().strip()
+                if file_index:
+                    start_index = int(file_index)
+                print(f"REMOVE THIS!!! all_band_names start index: {start_index}")
+        self.gather_band_names()
 
         if not glob.glob(RESULT_FILE_STRING):
             with open (RESULT_FILE_STRING, 'w') as target:
@@ -40,75 +42,84 @@ class SpotifyManager:
         no_results = 0
         non_matched = 0
         multiple_matched = 0
-        counter = 0
+        regular_matched = 0
+        # counter = 0
 
         with open ("all_band_names.txt", "r+") as source:
-            for line in source.readlines():
+            for i,line in enumerate(source.readlines()[start_index:],start_index):
                 name = line.strip()
                 matched = self.search_artist(name,limit=10)
                 cnt_mtch = len(matched[0])
                 if cnt_mtch == 1:
                     artists.update(matched[0])
+                    regular_matched += 1
                 elif cnt_mtch == 0:
                     if (matched[1]):
                         non_matched += 1
                     else:
                         no_results += 1
                 elif cnt_mtch > 1:
+                    print(f'Multiple match on: {matched[0]}')
                     multiple_matched += (cnt_mtch - 1)
                     artists.update(matched[0])
                 else:
                     pass
 
-                counter += 1
-                if counter % 1250 == 0:
+                # counter += 1
+                if (i + 1) % 1250 == 0:
+                    print(f'Length of artist dataframe is: {len(artists)}')
+                    print(f'tell() returns: {source.tell()}')
                     df = pd.DataFrame.from_dict(artists, orient='index')
                     df.to_csv(RESULT_FILE_STRING,mode='a',index=True,header=False)
                     with open(FILE_COUNTER_STRING,'w') as file:
-                        file.write(counter)
+                        file.write(str(i+1))
                     artists = {}
-                    if counter==stop:
+                    if (i+1)>=stop:
                         break
-                    print(f"\n{dt.datetime.now()}  ---  XXXXX Counter is {counter} XXXXX\n")
+                    print(f"\n{dt.datetime.now()}  ---  XXXXX Current line is {i + 1} XXXXX\n")
             
-            print("\n FINAL RESULTS \n")
-            # print(f"Dictionary contains {len(artists)} many artists.") # \nFirst element is:")
-            # pprint.pprint(artists[0])
-            # print("Last element is:")
-            # pprint.pprint(artists[-1])
-            print(f"Non matched count is {non_matched},") 
-            print(f"No results count is {no_results},") 
-            print(f"and multiple matches are {multiple_matched}")
+        print("\n FINAL RESULTS \n")
+        # print(f"Dictionary contains {len(artists)} many artists.") # \nFirst element is:")
+        # pprint.pprint(artists[0])
+        print("Last element is:")
+        # pprint.pprint(artists[-1])
+        print(f"Normal matches: {regular_matched}")
+        print(f"Artists deleted from genre matching: {non_matched},") 
+        print(f"Spotify couldn't match our band name: {no_results},") 
+        print(f"Multiple matches are {multiple_matched}")
 
-            time = dt.datetime.now()
-            if artists:
-                print(f"Writing {len(artists)} artists that is left.")
-                df = pd.DataFrame.from_dict(artists, orient='index')
-            # df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
+        time = dt.datetime.now()
+        if artists:
+            print(f"Writing {len(artists)} artists that is left.")
+            df = pd.DataFrame.from_dict(artists, orient='index')
             df.to_csv(RESULT_FILE_STRING,mode='a',index=True,header=False)
             print("Remaining write operation should be succesfull")
+        # df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
         
-    def gather_band_names(self,start=0):
+    def gather_band_names(self):
         path = '/home/kaan/Repos/metal_dataset/'
         FILE_NAME = 'all_band_names.txt'
         all_bands = []
 
+        if glob.glob(FILE_NAME):
+            print('gather_band_names() found a file already created')
+            return FILE_NAME
+
         # Gather all file names from all genres
-        for name in glob.glob(path + '*_bands.txt'):
+        list_of_files = glob.glob(path + '*_bands.txt')
+        for name in list_of_files:
             all_bands.append(name)
 
-        with open(FILE_NAME, "w+") as target_file:
+        # Assumes the intended file exists and returns the name directly.
+        with open(FILE_NAME, "w") as target_file:
             # Read all files and write lines to a set
             lines = set()
             for genre_file in all_bands:
                 with open(genre_file, "r") as source_file:
                     temp_set = set(source_file.readlines())
                     lines.update(temp_set)
-
             # Write set's lines to target file
-            # lines = sorted(lines)
-            target_file.seek(0,0)
-            for line in lines[start_index:]:
+            for line in lines:
                 target_file.write(line)
         return FILE_NAME
 
@@ -124,6 +135,9 @@ class SpotifyManager:
         # Genre'yi query'e eklemek istersen lazim olacak alttaki
         # search_str = f"{artist_name}"
         result = {}
+        # TODO: try catch'ten cikar? Performans etkilerse cikar
+        # cunku spotiPy kendisi try catch mekanizmali calisiyor olabilir.
+        # Slight difference var diyorlar cok major degilmis fark.
         try:
             result = self.sp.search(artist_name, type="artist", limit=limit)
         except SpotifyException as se:
@@ -156,7 +170,8 @@ class SpotifyManager:
                         for genre in item['genres']:
                             words = re.split('\\-|\\ ', genre)
                             if self.greenlist.intersection(words):
-                                matched[item["id"]] = {"artist_name":item["name"],
+                                matched[item["id"]] = {"test_name":artist_name,
+                                                        "artist_name":item["name"],
                                                         "artist_id" :item["id"],
                                                         "genres"    :item["genres"],
                                                         "followers" :item["followers"],
