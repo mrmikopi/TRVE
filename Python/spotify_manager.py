@@ -172,10 +172,10 @@ class SpotifyManager:
                             if self.greenlist.intersection(words):
                                 matched[item["id"]] = {"test_name":artist_name,
                                                         "artist_name":item["name"],
-                                                        "artist_id" :item["id"],
-                                                        "genres"    :item["genres"],
-                                                        "followers" :item["followers"],
-                                                        "popularity":item["popularity"]}
+                                                        "artist_id"  :item["id"],
+                                                        "genres"     :item["genres"],
+                                                        "followers"  :item["followers"],
+                                                        "popularity" :item["popularity"]}
             else:
                 # Spotipy covldn't find any resvlts
                 return (matched,False)
@@ -185,9 +185,20 @@ class SpotifyManager:
 
     def search_albums(self, artist_id):
         # Get albums of the artist
-        result = self.sp.artist_albums(artist_id, country="US", album_type="album", limit=50)
+        result = self.sp.artist_albums(artist_id, country="US", album_type="album,single", limit=50)
         # pprint.pprint(result)
         albums = []
+        if result['items']:
+            for item in result['items']:
+                temp = {'album_group'       :item['album_group'],
+                        'spotify_album_id'  :item['id'],
+                        'album_name'        :item['name'],
+                        'album_release_date':item['release_date']}
+                       #'album_total_tracks':item['total_tracks']
+                albums.append(temp)
+        
+        return albums
+
 
         # Group every album according to their name similarity
 
