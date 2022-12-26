@@ -2,3 +2,9 @@
 *.log
 /deneme
 Python/.cache
+Python/__pycache__
+Python/.pytest_cache
+Scala/metastore_db
+Scala/mad_plus/*.crc
+Scala/mad_plus/_SUCCESS
+Scala/deneme

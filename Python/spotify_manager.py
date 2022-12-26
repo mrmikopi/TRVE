@@ -20,7 +20,7 @@ class SpotifyManager:
         self.sp = spotipy.Spotify(client_credentials_manager=
             SpotifyClientCredentials(client_id=client_id,client_secret=client_secret))
     
-    def test_all_artists(self, stop=0):
+    def search_all_artists(self, stop=0):
         
         FILE_COUNTER_STRING = 'bands_counter.txt'
         RESULT_FILE_STRING = 'all_artists.csv'
@@ -170,12 +170,19 @@ class SpotifyManager:
                         for genre in item['genres']:
                             words = re.split('\\-|\\ ', genre)
                             if self.greenlist.intersection(words):
-                                matched[item["id"]] = {"test_name":artist_name,
-                                                        "artist_name":item["name"],
-                                                        "artist_id"  :item["id"],
-                                                        "genres"     :item["genres"],
-                                                        "followers"  :item["followers"],
-                                                        "popularity" :item["popularity"]}
+                                matched.append({"mad_artist_name"   :artist_name,
+                                            "spotify_artist_name"   :item["name"],
+                                            "spotify_artist_id"     :item["id"],
+                                            "spotify_genres"        :item["genres"],
+                                            "followers"             :item["followers"],
+                                            "popularity"            :item["popularity"]})
+                                # 22.12.22 basliklari guncelledim ama sonuc dosyada hala hatali btw.
+                                # matched[item["id"]] = {"test_name":artist_name,
+                                #                         "artist_name":item["name"],
+                                #                         "artist_id"  :item["id"],
+                                #                         "genres"     :item["genres"],
+                                #                         "followers"  :item["followers"],
+                                #                         "popularity" :item["popularity"]}
             else:
                 # Spotipy covldn't find any resvlts
                 return (matched,False)

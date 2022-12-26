@@ -15,12 +15,12 @@ object DataExtraction {
     /* create mad+ */
     // create schema
     val schema = StructType(
-    StructField("band_name", StringType, true) ::
-    StructField("mad_genre", StringType, false) :: Nil)
+    StructField("mad_band_name", StringType, true) ::
+    StructField("mad_genres", StringType, false) :: Nil)
 
     // create dataframe
     var madPlus = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], schema)
-    var tempDf = spark.createDataFrame(sc.emptyRDD[Row], schema)
+    // var tempDf = spark.createDataFrame(sc.emptyRDD[Row], schema)
 
     /* File Iteration */
     // Create temp list for band files
@@ -47,13 +47,16 @@ object DataExtraction {
             // Read from current file to DataFrame
             val bandNames = spark.read.text("/home/kaan/Repos/metal_dataset/" + i)
             // Add genre name to all columns
-            val bandsWithGenre = bandNames.withColumn("mad_genre", lit(genreName))
+            val bandsWithGenre = bandNames.withColumn("mad_genres", lit(genreName))
             // Union dataframes
             madPlus = madPlus.union(bandsWithGenre)
           }
       }
 
-      println("Band name processing finished. Details for Dataframe:")
+      println("Band name processing finished. Aggregating band names with genres...")
+      madPlus.createTempView("mad")
+      madPlus = spark.sql("SELECT mad_band_name, COLLECT_SET(mad_genres) AS mad_genres FROM mad GROUP BY mad_band_name")
+      println("Aggregate function is finished. Details for Dataframe:")
       madPlus.describe().show()
       val sampleCount = 50;
       println(s"$sampleCount sample rows for you metalheads \\m/")
