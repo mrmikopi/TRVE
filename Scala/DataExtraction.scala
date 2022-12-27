@@ -54,14 +54,16 @@ object DataExtraction {
       }
 
       println("Band name processing finished. Aggregating band names with genres...")
+      spark.catalog.dropTempView("mad")
       madPlus.createTempView("mad")
-      madPlus = spark.sql("SELECT mad_band_name, COLLECT_SET(mad_genres) AS mad_genres FROM mad GROUP BY mad_band_name")
+      madPlus = spark.sql("SELECT mad_band_name, CONCAT_WS('//',COLLECT_SET(mad_genres)) AS mad_genres FROM mad GROUP BY mad_band_name")
       println("Aggregate function is finished. Details for Dataframe:")
       madPlus.describe().show()
       val sampleCount = 50;
       println(s"$sampleCount sample rows for you metalheads \\m/")
       madPlus.sample( 1.0 * sampleCount / madPlus.count()).show(sampleCount)
 
+      madPlus.write.csv("mad_plus")
       return madPlus;
   }
 
