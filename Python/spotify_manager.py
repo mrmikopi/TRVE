@@ -32,7 +32,8 @@ class SpotifyManager:
                 if file_index:
                     start_index = int(file_index)
                 print(f"REMOVE THIS!!! all_band_names start index: {start_index}")
-        self.gather_band_names()
+        # Not calling this since we're doing same work on Scala Spark
+        # self.gather_band_names()
 
         if not glob.glob(RESULT_FILE_STRING):
             with open (RESULT_FILE_STRING, 'w') as target:
@@ -95,7 +96,26 @@ class SpotifyManager:
             df.to_csv(RESULT_FILE_STRING,mode='a',index=True,header=False)
             print("Remaining write operation should be succesfull")
         # df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
-        
+    
+
+    # If spark left csv files without headers, this fixes it
+    def fix_spark_csv_headers(self):
+        for mad_file in glob.glob('../Scala/mad_plus/*.csv'):
+            with open(mad_file, 'r') as original: data = original.read()
+            with open(mad_file, 'w') as modified: modified.write("mad_band_name,mad_genres\n" + data)
+
+
+    # Assumes fix_spark_csv_headers has been invoked
+    # Gets Spark created all_mad_artists.csv file and merges it with 
+    # python created all_artists.csv. Writes it to 
+    def format_spark_madplus(self):
+        files = glob.glob('../Scala/mad_plus/*.csv')
+        df_mp = pd.concat([pd.read_csv(files[2]),pd.read_csv(files[0]),pd.read_csv(files[1])],
+            ignore_index=True)
+         df_all = pd.merge(df_mp,df_py,how='left',left_on='mad_band_name',right_on='mad_artist_name')
+         df_all = df_all.drop(axis='columns',labels=['mad_artist_name','sp_artist_id.1'])
+         df_all.to_csv('merged_mp_py_artists.csv')
+
     def gather_band_names(self):
         path = '/home/kaan/Repos/metal_dataset/'
         FILE_NAME = 'all_band_names.txt'

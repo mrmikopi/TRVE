@@ -1,4 +1,4 @@
-,artist_name,artist_id,genres,followers,popularity
+sp_artist_id,mad_artist_name,sp_artist_name,sp_artist_id,sp_genres,sp_followers,sp_popularity
 7hX10nNAnRdIr2byhe4UkT,Legacy ID,Legacy ID,7hX10nNAnRdIr2byhe4UkT,['latvian metal'],"{'href': None, 'total': 76}",0
 58nLKpV2WzqCv24LIMpmfL,Survive the Demise,Survive the Demise,58nLKpV2WzqCv24LIMpmfL,['technical thrash'],"{'href': None, 'total': 23}",0
 6jsvqe22Ha046StLSJtSQE,Another Perfect Day,Another Perfect Day,6jsvqe22Ha046StLSJtSQE,['german death metal'],"{'href': None, 'total': 387}",0
