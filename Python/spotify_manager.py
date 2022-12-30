@@ -97,18 +97,22 @@ class SpotifyManager:
             print("Remaining write operation should be succesfull")
         # df.to_csv(f"First_6000_Artists_{time.month}_{time.day}_{time.hour}_{time.minute}.csv")
     
+    def search_all_albums(self, stop=0):
+        # TODO 
 
-    # If spark left csv files without headers, this fixes it
     def fix_spark_csv_headers(self):
+        # If spark left csv files without headers, this fixes it
         for mad_file in glob.glob('../Scala/mad_plus/*.csv'):
             with open(mad_file, 'r') as original: data = original.read()
             with open(mad_file, 'w') as modified: modified.write("mad_band_name,mad_genres\n" + data)
 
-
-    # Assumes fix_spark_csv_headers has been invoked
-    # Gets Spark created all_mad_artists.csv file and merges it with 
-    # python created all_artists.csv. Writes it to 
     def format_spark_madplus(self):
+        # Assumes fix_spark_csv_headers has been invoked
+        # Gets Spark created all_mad_artists.csv file and merges it with 
+        # python created all_artists.csv. Writes it to a file.
+        # PS: Don't forget to change python output csv's header manually or smt.
+        # Required format: 
+        # sp_artist_id,mad_artist_name,sp_artist_name,sp_artist_id,sp_genres,sp_followers,sp_popularity
         files = glob.glob('../Scala/mad_plus/*.csv')
         df_mp = pd.concat([pd.read_csv(files[2]),pd.read_csv(files[0]),pd.read_csv(files[1])],
             ignore_index=True)
